@@ -1,21 +1,27 @@
+import { AdminPanel } from "@/components/AdminPanel";
 import { CartSheet } from "@/components/CartSheet";
 import { CheckoutPage } from "@/components/CheckoutPage";
 import { Header } from "@/components/Header";
 import { OrderSuccess } from "@/components/OrderSuccess";
 import { ProductGrid } from "@/components/ProductGrid";
+import { WishlistSheet } from "@/components/WishlistSheet";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 const queryClient = new QueryClient();
 
-type View = "home" | "checkout" | "success";
+type View = "home" | "checkout" | "success" | "admin";
 
 function StoreApp() {
   const [view, setView] = useState<View>("home");
   const [cartOpen, setCartOpen] = useState(false);
+  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
 
   const handleOrderSuccess = (id: string) => {
     setOrderId(id);
@@ -27,18 +33,43 @@ function StoreApp() {
     setOrderId("");
   };
 
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setView("home");
+  };
+
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q);
+    if (view !== "home") setView("home");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {view !== "success" && (
         <Header
           onCartOpen={() => setCartOpen(true)}
-          onLogoClick={() => setView("home")}
+          onLogoClick={() => {
+            setView("home");
+            setSearchQuery("");
+            setActiveCategory("All");
+          }}
+          onWishlistOpen={() => setWishlistOpen(true)}
+          onAdminOpen={() => setView("admin")}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          activeCategory={activeCategory}
+          onCategoryChange={handleCategoryChange}
         />
       )}
 
       {/* Main content */}
       <div className="flex-1">
-        {view === "home" && <ProductGrid />}
+        {view === "home" && (
+          <ProductGrid
+            searchQuery={searchQuery}
+            activeCategory={activeCategory}
+          />
+        )}
         {view === "checkout" && (
           <CheckoutPage
             onBack={() => setView("home")}
@@ -48,6 +79,7 @@ function StoreApp() {
         {view === "success" && (
           <OrderSuccess orderId={orderId} onContinue={handleContinueShopping} />
         )}
+        {view === "admin" && <AdminPanel onBack={() => setView("home")} />}
       </div>
 
       {/* Cart sheet */}
@@ -55,6 +87,12 @@ function StoreApp() {
         isOpen={cartOpen}
         onClose={() => setCartOpen(false)}
         onCheckout={() => setView("checkout")}
+      />
+
+      {/* Wishlist sheet */}
+      <WishlistSheet
+        isOpen={wishlistOpen}
+        onClose={() => setWishlistOpen(false)}
       />
 
       {/* Footer */}
@@ -144,7 +182,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
-        <StoreApp />
+        <WishlistProvider>
+          <StoreApp />
+        </WishlistProvider>
       </CartProvider>
     </QueryClientProvider>
   );
